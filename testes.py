@@ -7,42 +7,53 @@ from skimage.color import rgb2gray
 from skimage.transform import resize
 from numpy import linalg
 
-def show_test_faces(folder_path, img_size=(120, 80)):
+img_size = (200, 150)
+
+def show_test_faces(folder_path, limit=5):
     #Mostrando imagens de teste em escala de cinza
     files = os.listdir(folder_path)
     num_files = len([f for f in files if os.path.isfile(os.path.join(folder_path, f))])
-    fig, axes = plt.subplots(num_files, 2, figsize=(15, 12))
-    for index, filename in enumerate(files):
-        img_path = os.path.join(folder_path, filename)
-        image = img.imread(img_path)
-        image_manipulated = rgb2gray(image)
-        image_manipulated = resize(image_manipulated, img_size, anti_aliasing=True)
+    print(f"Numfiles: {num_files}")
+    if limit < num_files:
+        fig, axes = plt.subplots(limit, 2, figsize=(15, 12))
+        for index, filename in enumerate(files):
+            if index < limit:
+                img_path = os.path.join(folder_path, filename)
+                image = img.imread(img_path)
+                image_manipulated = image
+                if image_manipulated.ndim == 3:
+                    image_manipulated = rgb2gray(image_manipulated)
+                image_manipulated = resize(image_manipulated, img_size, anti_aliasing=True)
 
-        if num_files > 1:
-            axes[index, 0].imshow(image, cmap='gray')
-            axes[index, 0].set_title(f'Pessoa {index+1}')
-            axes[index, 0].axis('off')
-            axes[index, 1].imshow(image_manipulated, cmap='gray')
-            axes[index, 1].set_title(f'Pessoa {index+1} reduzida')
-            axes[index, 1].axis('off')
-        else:
-            axes[0].imshow(image, cmap='gray')
-            axes[0].set_title(f'Pessoa {index+1}')
-            axes[0].axis('off')
-            axes[1].imshow(image_manipulated, cmap='gray')
-            axes[1].set_title(f'Pessoa {index+1} reduzida')
-            axes[1].axis('off')
+                if num_files > 1:
+                    axes[index, 0].imshow(image, cmap='gray')
+                    axes[index, 0].set_title(f'Pessoa {index+1}')
+                    axes[index, 0].axis('off')
+                    axes[index, 1].imshow(image_manipulated, cmap='gray')
+                    axes[index, 1].set_title(f'Pessoa {index+1} reduzida')
+                    axes[index, 1].axis('off')
+                else:
+                    axes[0].imshow(image, cmap='gray')
+                    axes[0].set_title(f'Pessoa {index+1}')
+                    axes[0].axis('off')
+                    axes[1].imshow(image_manipulated, cmap='gray')
+                    axes[1].set_title(f'Pessoa {index+1} reduzida')
+                    axes[1].axis('off')
+            else:
+                break
 
-    plt.tight_layout()
-    plt.show()
+        #plt.tight_layout()
+        plt.show()
     
     
-def build_matrix(folder, img_size=(120, 80)):
+def build_matrix(folder):
     images = []
     for filename in os.listdir(folder):
         img_path = os.path.join(folder, filename)
         image = img.imread(img_path)
-        image_manipulated = rgb2gray(image)
+        image_manipulated = image
+        if image_manipulated.ndim == 3:
+            image_manipulated = rgb2gray(image_manipulated)
         image_manipulated = resize(image_manipulated, img_size, anti_aliasing=True)
         images.append(image_manipulated.flatten())    #Convertendo as imagens para vetores
     
@@ -57,7 +68,7 @@ def isOrtogonal(matrix):
     for i in range(num_colunas):
         for j in range(i + 1, num_colunas):
             dot_product = np.dot(matrix[:, i], matrix[:, j])
-            if not np.isclose(dot_product, 0):
+            if not np.isclose(dot_product, 0, atol=0.0):
                 ortogonal = False
                 break
         if not ortogonal:
@@ -68,7 +79,7 @@ def isOrtogonal(matrix):
         print("Os vetores não são ortogonais.")
 
 
-def build_matrix_eigenfaces(folder, img_size=(120, 80), use_mean_face=True):
+def build_matrix_eigenfaces(folder, use_mean_face=True):
     images_matrix = build_matrix(folder, img_size)
     #print(f"Dimensões da matriz de imagens: {images_matrix.shape}")
     mean_face = np.zeros(images_matrix.shape[0])
@@ -100,20 +111,33 @@ def build_matrix_eigenfaces(folder, img_size=(120, 80), use_mean_face=True):
     return eigenfaces_matrix, mean_face
     
 
-def visualize_best_eigenface(matrix_eigenfaces, img_size=(120, 80)):
-    max_eigenvector = matrix_eigenfaces[:, 0]   #Autovetor associado ao maior autovalor
-    eigenface = max_eigenvector.reshape(img_size)    #Reconstruindo a imagem a partir do autovetor obtido
-    plt.figure(figsize=(6, 8))
-    plt.imshow(eigenface, cmap='gray')
-    plt.title('Eigenface associada ao maior autovalor')
-    plt.axis('off')
+def visualize_eigenfaces(matrix_eigenfaces):
+    limit = min(40, matrix_eigenfaces.shape[1])   #Mostrando as primeiras 40 eigenfaces
+    eigenfaces = []
+    for i in range(limit):
+        eigenvector = matrix_eigenfaces[:, i]   #Autovetor
+        eigenface = eigenvector.reshape(img_size)    #Reconstruindo a imagem a partir do autovetor obtido
+        eigenfaces.append(eigenface)
+    
+    num_eigenfaces = len(eigenfaces)
+    fig, axes = plt.subplots(5, 8, figsize=(15, 12))
+    for i, ax in enumerate(axes.flat):
+        if i < num_eigenfaces:
+            ax.imshow(eigenfaces[i], cmap='gray')
+            ax.set_title(f'Eigenface {i+1}')
+            ax.axis('off')
+        else:
+            ax.axis('off')
+    plt.tight_layout()
     plt.show()
 
 
-def approximate_image(path_image, matrix_eigenfaces, mean_face, num_eigenfaces, img_size=(120, 80)):
+def approximate_image(path_image, matrix_eigenfaces, mean_face, num_eigenfaces):
     #Tentando aproximar uma imagem que não estava no conjunto de treinamento:
     new_image = img.imread(path_image)
-    new_image_manipulated = rgb2gray(new_image)
+    new_image_manipulated = new_image
+    if new_image_manipulated.ndim == 3:
+        new_image_manipulated = rgb2gray(new_image_manipulated)
     new_image_manipulated = resize(new_image_manipulated, img_size, anti_aliasing=True)
     new_image_vector = (new_image_manipulated.flatten() - mean_face)
     
@@ -134,8 +158,28 @@ def approximate_image(path_image, matrix_eigenfaces, mean_face, num_eigenfaces, 
     plt.show()
 
 
-img_size = (200, 150)
-#show_test_faces('face_images_test', img_size)
-matrix_eigenfaces, mean_face = build_matrix_eigenfaces('face_images_test', img_size, False)
-#visualize_best_eigenface(matrix_eigenfaces, img_size)
-approximate_image('img_teste.jpg', matrix_eigenfaces, mean_face, 8, img_size)
+def images_classification(path_image1, path_image2, matrix_eigenfaces, mean_face):
+    #Classificando duas imagens como sendo da mesma pessoa ou de pessoas diferentes plotando em duas dimensões:
+    image1 = img.imread(path_image1)
+    image1_manipulated = image1
+    if image1_manipulated.ndim == 3:
+        image1_manipulated = rgb2gray(image1_manipulated)
+    image1_manipulated = resize(image1_manipulated, img_size, anti_aliasing=True)
+    image1_vector = (image1_manipulated.flatten() - mean_face)
+    
+    image2 = img.imread(path_image2)
+    image2_manipulated = image2
+    if image2_manipulated.ndim == 3:
+        image2_manipulated = rgb2gray(image2_manipulated)
+    image2_manipulated = resize(image1_manipulated, img_size, anti_aliasing=True)
+    image2_vector = (image2_manipulated.flatten() - mean_face)
+    
+    #TODO
+
+
+
+#show_test_faces('att_faces_png')
+matrix_eigenfaces, mean_face = build_matrix_eigenfaces('att_faces_png', True)
+#print(matrix_eigenfaces.shape)
+visualize_eigenfaces(matrix_eigenfaces)
+#approximate_image('1_1.png', matrix_eigenfaces, mean_face, matrix_eigenfaces.shape[1])
