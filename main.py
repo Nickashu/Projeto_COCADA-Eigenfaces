@@ -2,21 +2,32 @@ import numpy as np
 import matplotlib.pyplot as plt
 import matplotlib.image as img
 import os
-from skimage import data
 from skimage.color import rgb2gray
 from skimage.transform import resize
 from numpy import linalg
 
-img_size = (120, 80)
+img_size = (240, 160)
 list_vector_images = []
+
+yale_database_path = "yale_database"
+att_database_path = "att_database"
+yale_att_database_path = "yale_att_database"
+
+image_approximation1_path = "teste_aproximacao1.png"
+image_approximation2_path = "teste_aproximacao2.png"
+image_approximation3_path = "teste_aproximacao3.jpeg"
+image_recognition1_path = "teste_reconhecimento1.png"
+image_recognition2_path = "teste_reconhecimento2.png"
+person1_folder_path = "person1"
+person2_folder_path = "person2"
 
 def show_test_faces(folder_path, limit=5):
     #Mostrando imagens de teste em escala de cinza
     files = os.listdir(folder_path)
     num_files = len([f for f in files if os.path.isfile(os.path.join(folder_path, f))])
-    print(f"Numfiles: {num_files}")
+    #print(f"Numfiles: {num_files}")
     if limit < num_files:
-        fig, axes = plt.subplots(limit, 2, figsize=(10, 7))
+        fig, axes = plt.subplots(limit, 2, figsize=(12, 10))
         for index, filename in enumerate(files):
             if index < limit:
                 img_path = os.path.join(folder_path, filename)
@@ -28,17 +39,17 @@ def show_test_faces(folder_path, limit=5):
 
                 if num_files > 1:
                     axes[index, 0].imshow(image, cmap='gray')
-                    axes[index, 0].set_title(f'Pessoa {index+1}')
+                    axes[index, 0].set_title(f'Imagem original')
                     axes[index, 0].axis('off')
                     axes[index, 1].imshow(image_manipulated, cmap='gray')
-                    axes[index, 1].set_title(f'Pessoa {index+1} reduzida')
+                    axes[index, 1].set_title(f'Imagem manipulada')
                     axes[index, 1].axis('off')
                 else:
                     axes[0].imshow(image, cmap='gray')
-                    axes[0].set_title(f'Pessoa {index+1}')
+                    axes[0].set_title(f'Imagem original')
                     axes[0].axis('off')
                     axes[1].imshow(image_manipulated, cmap='gray')
-                    axes[1].set_title(f'Pessoa {index+1} reduzida')
+                    axes[1].set_title(f'Imagem manipulada')
                     axes[1].axis('off')
             else:
                 break
@@ -89,7 +100,6 @@ def show_mean_face(mean_face):
 
 def build_matrix_eigenfaces(folder, use_mean_face=True):
     images_matrix = build_matrix(folder)
-    #print(f"Dimensões da matriz de imagens: {images_matrix.shape}")
     mean_face = np.zeros(images_matrix.shape[0])
     if use_mean_face:
         for i in range(images_matrix.shape[1]):
@@ -99,7 +109,6 @@ def build_matrix_eigenfaces(folder, use_mean_face=True):
     
     simple_covariance_matrix = np.matmul(images_matrix.T, images_matrix)
     eigenvalues, eigenvectors = linalg.eig(simple_covariance_matrix)   #Autovalores e autovetores da matriz mais simples (os autovetores são as colunas de uma matriz)
-    #print(f"Autovalores: {eigenvalues}\nAutovetores:\n{eigenvectors}")
 
     eigen_pairs = [(eigenvalues[i], eigenvectors[:, i]) for i in range(len(eigenvalues))]
     eigen_pairs.sort(key=lambda x: x[0], reverse=True)   #Ordenando os pares de autovetores e autovalores em ordem decrescente em relação aos autovalores
@@ -113,7 +122,6 @@ def build_matrix_eigenfaces(folder, use_mean_face=True):
         eigenfaces_matrix[:, i] /= linalg.norm(coluna)
         
     return eigenfaces_matrix, mean_face
-    
 
 def visualize_eigenfaces(matrix_eigenfaces):
     limit = min(40, matrix_eigenfaces.shape[1])   #Mostrando as primeiras 40 eigenfaces
@@ -135,7 +143,6 @@ def visualize_eigenfaces(matrix_eigenfaces):
     plt.tight_layout()
     plt.show()
 
-
 def approximate_image(path_image, matrix_eigenfaces, mean_face):
     #Tentando aproximar uma imagem que não estava no conjunto de treinamento:
     new_image = img.imread(path_image)
@@ -145,24 +152,31 @@ def approximate_image(path_image, matrix_eigenfaces, mean_face):
     new_image_manipulated = resize(new_image_manipulated, img_size, anti_aliasing=True)
     new_image_vector = (new_image_manipulated.flatten() - mean_face)
     
-    num_eigenfaces = [1, 10, 50, 100, 200, 400, 800, 1200, 1600]
-    fig, axes = plt.subplots(len(num_eigenfaces), 2, figsize=(15, 12))
+    num_eigenfaces = [1, 10, 50, 100, 400, 800, 1600, 2000]
+    num_eigenfaces.append(matrix_eigenfaces.shape[1])
+
+    reconstructed_images = []
     for index, num_eigenface in enumerate(num_eigenfaces):
         work_matrix = matrix_eigenfaces[:, :num_eigenface]
         weights = np.matmul(work_matrix.T, new_image_vector)  #Vetor com os tamanhos das projeções da imagem no subespaço gerado pelos autovetores
         reconstructed_image_vector = np.matmul(work_matrix, weights)
         reconstructed_image_vector = mean_face + reconstructed_image_vector
         reconstructed_image = reconstructed_image_vector.reshape(img_size)
-        
-        axes[index, 0].imshow(new_image_manipulated, cmap='gray')
-        axes[index, 0].set_title(f'Original')
-        axes[index, 0].axis('off')
-        axes[index, 1].imshow(reconstructed_image, cmap='gray')
-        axes[index, 1].set_title(f'Reconstrução com {num_eigenface} eigenfaces')
-        axes[index, 1].axis('off')
+        reconstructed_images.append(reconstructed_image)
     
+    fig, axes = plt.subplots(3, 4, figsize=(10, 7))
+    axes[0, 0].imshow(new_image_manipulated, cmap='gray')
+    axes[0, 0].set_title(f'Original')
+    axes[0, 0].axis('off')
+    for i, ax in enumerate(axes.flat[1:], start=1):
+        if i-1 < len(reconstructed_images):
+            ax.imshow(reconstructed_images[i-1], cmap='gray')
+            ax.set_title(f'{num_eigenfaces[i-1]} eigenfaces')
+            ax.axis('off')
+        else:
+            ax.axis('off')
+    plt.tight_layout()
     plt.show()
-
 
 def images_classification(path_person1, path_person2, matrix_eigenfaces, mean_face):
     #Comparando dua imagens em um espaço bidimensional:
@@ -207,7 +221,7 @@ def images_classification(path_person1, path_person2, matrix_eigenfaces, mean_fa
     plt.show()
 
 
-def image_recognition(path_image, matrix_eigenfaces, mean_face):
+def person_recognition(path_image, matrix_eigenfaces, mean_face, num_eigenfaces):
     #Dada uma imagem que não está no conjunto de treinamento, quero achar a melhor aproximação para ela (usando distâncias euclidianas)
     image = img.imread(path_image)
     image_manipulated = image
@@ -215,14 +229,16 @@ def image_recognition(path_image, matrix_eigenfaces, mean_face):
         image_manipulated = rgb2gray(image_manipulated)
     image_manipulated = resize(image_manipulated, img_size, anti_aliasing=True)
     image_vector = (image_manipulated.flatten() - mean_face)
-    weights = np.matmul(matrix_eigenfaces.T, image_vector)
+
+    work_matrix = matrix_eigenfaces[:, :num_eigenfaces]    #Quanto maior o número de eigenfaces, mais preciso e demorado será
     
+    weights = np.matmul(work_matrix.T, image_vector)
     best_vector_image = list_vector_images[0]
     min_distance = 0
     
     for index, vec_image in enumerate(list_vector_images):
         vec_image_manipulated = vec_image - mean_face
-        weights_compare = np.matmul(matrix_eigenfaces.T, vec_image_manipulated)
+        weights_compare = np.matmul(work_matrix.T, vec_image_manipulated)
         euclidian_distance = linalg.norm(weights - weights_compare)    #Calculando a distância Euclidiana entre os dois vetores de tamanhos
         if index == 0:
             best_vector_image = vec_image
@@ -241,13 +257,10 @@ def image_recognition(path_image, matrix_eigenfaces, mean_face):
     axes[1].set_title(f'Melhor aproximação')
     axes[1].axis('off')
     plt.show()
+    
 
-
-#show_test_faces('att_database')
-matrix_eigenfaces, mean_face = build_matrix_eigenfaces('yale_att_database', True)
-#show_mean_face(mean_face)
-#visualize_eigenfaces(matrix_eigenfaces)
-#print(len(list_vector_images))
-approximate_image('4_4.png', matrix_eigenfaces, mean_face)
-#images_classification('person1', 'person2', matrix_eigenfaces, mean_face)
-#image_recognition('4_4.png', matrix_eigenfaces, mean_face)
+matrix_eigenfaces, mean_face = build_matrix_eigenfaces(yale_att_database_path)   #Montando a matriz de autofaces
+visualize_eigenfaces(matrix_eigenfaces)                                          #Visualizando as autofaces (eigenfaces)
+#approximate_image(image_approximation1_path, matrix_eigenfaces, mean_face)       #Exemplo de aproximação de um rosto
+#images_classification(person1_folder_path, person2_folder_path, matrix_eigenfaces, mean_face)   #Exemplo de classificação de imagens de duas pessoas
+#person_recognition(image_recognition1_path, matrix_eigenfaces, mean_face, 100)   #Exemplo de reconhecimento facial usando 100 autovetores
