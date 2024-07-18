@@ -9,23 +9,17 @@ from numpy import linalg
 img_size = (240, 160)
 list_vector_images = []
 
-yale_database_path = "yale_database"
-att_database_path = "att_database"
-yale_att_database_path = "yale_att_database"
+database_path = "yale_att_database"    #Caminho para a pasta que contém as fotos que serão utilizadas
 
-image_approximation1_path = "teste_aproximacao1.png"
-image_approximation2_path = "teste_aproximacao2.png"
-image_approximation3_path = "teste_aproximacao3.jpeg"
-image_recognition1_path = "teste_reconhecimento1.png"
-image_recognition2_path = "teste_reconhecimento2.png"
-person1_folder_path = "person1"
-person2_folder_path = "person2"
+image_approximation1_path = "teste_aproximacao.png"    #Caminho para a imagem que será usada para a aproximação
+image_recognition1_path = "teste_reconhecimento.png"   #Caminho para a imagem que será usada para o reconhecimento facial
+person1_folder_path = "person1"    #Caminho para a pasta que contém fotos de uma pessoa para serem usadas na classificação de rostos
+person2_folder_path = "person2"    #Caminho para a pasta que contém fotos da outra pessoa para serem usadas na classificação de rostos
 
 def show_test_faces(folder_path, limit=5):
     #Mostrando imagens de teste em escala de cinza
     files = os.listdir(folder_path)
     num_files = len([f for f in files if os.path.isfile(os.path.join(folder_path, f))])
-    #print(f"Numfiles: {num_files}")
     if limit < num_files:
         fig, axes = plt.subplots(limit, 2, figsize=(12, 10))
         for index, filename in enumerate(files):
@@ -259,7 +253,7 @@ def person_recognition(path_image, matrix_eigenfaces, mean_face, num_eigenfaces)
     plt.show()
     
 
-matrix_eigenfaces, mean_face = build_matrix_eigenfaces(yale_att_database_path)   #Montando a matriz de autofaces
+matrix_eigenfaces, mean_face = build_matrix_eigenfaces(database_path)   #Montando a matriz de autofaces
 visualize_eigenfaces(matrix_eigenfaces)                                          #Visualizando as autofaces (eigenfaces)
 #approximate_image(image_approximation1_path, matrix_eigenfaces, mean_face)       #Exemplo de aproximação de um rosto
 #images_classification(person1_folder_path, person2_folder_path, matrix_eigenfaces, mean_face)   #Exemplo de classificação de imagens de duas pessoas
